@@ -1,0 +1,396 @@
+[
+    {
+        "id": "79cd611b.4e9e",
+        "type": "tab",
+        "label": "handson",
+        "disabled": false,
+        "info": ""
+    },
+    {
+        "id": "ddcb605d.0b234",
+        "type": "function",
+        "z": "79cd611b.4e9e",
+        "name": "リクエスト作成",
+        "func": "msg.eqConfig = global.get('earthquakeConfig');\n\nmsg.url = msg.eqConfig.earthquake.endpoint;\nmsg.method = 'GET';\n\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "x": 380,
+        "y": 160,
+        "wires": [
+            [
+                "b88bd701.61e058"
+            ]
+        ]
+    },
+    {
+        "id": "77b978f8.b8b168",
+        "type": "inject",
+        "z": "79cd611b.4e9e",
+        "name": "地震情報取得",
+        "topic": "",
+        "payload": "",
+        "payloadType": "date",
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "x": 150,
+        "y": 160,
+        "wires": [
+            [
+                "ddcb605d.0b234"
+            ]
+        ]
+    },
+    {
+        "id": "b88bd701.61e058",
+        "type": "http request",
+        "z": "79cd611b.4e9e",
+        "name": "",
+        "method": "use",
+        "ret": "obj",
+        "paytoqs": false,
+        "url": "",
+        "tls": "",
+        "persist": false,
+        "proxy": "",
+        "authType": "",
+        "x": 570,
+        "y": 160,
+        "wires": [
+            [
+                "c97f5156.201c3"
+            ]
+        ]
+    },
+    {
+        "id": "b6e6bfef.a5ee",
+        "type": "inject",
+        "z": "79cd611b.4e9e",
+        "name": "インデックス作成",
+        "topic": "",
+        "payload": "",
+        "payloadType": "date",
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "x": 170,
+        "y": 560,
+        "wires": [
+            [
+                "e7da4550.22b088"
+            ]
+        ]
+    },
+    {
+        "id": "e7da4550.22b088",
+        "type": "function",
+        "z": "79cd611b.4e9e",
+        "name": "create index",
+        "func": "msg.eqConfig = global.get('earthquakeConfig');\nconst SERVICE_NAME = env.get(\"SERVICE_NAME\");\nconst API_KEY = msg.eqConfig.qu.apiKey;\nconst INDEX = `${SERVICE_NAME}-${msg.eqConfig.elasticsearch.indexName}`;\nconst TYPE = \"_doc\"\n\nmsg.url = `${msg.eqConfig.elasticsearch.endpoint}/${INDEX}/${TYPE}`;\nmsg.headers = {};\nmsg.headers['x-qanatuniverse-apikey'] = API_KEY;\nmsg.headers['Content-Type'] = 'application/json';\nmsg.method = \"POST\";\nmsg.payload = {};\n\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "x": 370,
+        "y": 560,
+        "wires": [
+            [
+                "9469338b.1759f"
+            ]
+        ]
+    },
+    {
+        "id": "9469338b.1759f",
+        "type": "http request",
+        "z": "79cd611b.4e9e",
+        "name": "",
+        "method": "use",
+        "ret": "obj",
+        "url": "",
+        "tls": "",
+        "x": 550,
+        "y": 560,
+        "wires": [
+            [
+                "971af1b0.b7ed2"
+            ]
+        ]
+    },
+    {
+        "id": "66e5042b.45b10c",
+        "type": "debug",
+        "z": "79cd611b.4e9e",
+        "name": "",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "false",
+        "x": 1070,
+        "y": 560,
+        "wires": []
+    },
+    {
+        "id": "2a3a81d1.92c71e",
+        "type": "function",
+        "z": "79cd611b.4e9e",
+        "name": "ESフォーマット変換",
+        "func": "esPayload = '';\nmsg.payload.forEach(function(payload){\n    let eqRecord = payload.properties;\n    eqRecord[\"@timestamp\"] = formatYmd(eqRecord.time);\n    eqRecord.location = {\n        lon: payload.geometry.coordinates[0],\n        lat: payload.geometry.coordinates[1],\n    }\n    esPayload += `{\"index\":{\"_id\": \"${payload.id}\"}}\\n`;\n    esPayload += JSON.stringify(eqRecord);\n    esPayload += '\\n';\n});\n\nmsg.payload = esPayload;\n\nreturn msg;\n\nfunction formatYmd(dt) {\n    const d = new Date(dt);\n    return d.toISOString();\n}",
+        "outputs": 1,
+        "noerr": 0,
+        "x": 320,
+        "y": 340,
+        "wires": [
+            [
+                "69ab99cc.912188"
+            ]
+        ]
+    },
+    {
+        "id": "69ab99cc.912188",
+        "type": "function",
+        "z": "79cd611b.4e9e",
+        "name": "bulk insert",
+        "func": "msg.url = msg.eqConfig.earthquakeUrl;\n\nconst SERVICE_NAME = env.get(\"SERVICE_NAME\");\nconst API_KEY = msg.eqConfig.qu.apiKey;\nconst INDEX = `${SERVICE_NAME}-${msg.eqConfig.elasticsearch.indexName}`;\nconst TYPE = \"_doc\"\n\nmsg.url = `${msg.eqConfig.elasticsearch.endpoint}/${INDEX}/${TYPE}/_bulk`;\nmsg.headers = {};\nmsg.headers['x-qanatuniverse-apikey'] = API_KEY;\nmsg.method = \"POST\";\n\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "x": 560,
+        "y": 340,
+        "wires": [
+            [
+                "2d32dede.1a9b42"
+            ]
+        ]
+    },
+    {
+        "id": "2d32dede.1a9b42",
+        "type": "http request",
+        "z": "79cd611b.4e9e",
+        "name": "",
+        "method": "use",
+        "ret": "obj",
+        "url": "",
+        "tls": "",
+        "x": 730,
+        "y": 340,
+        "wires": [
+            [
+                "e6a7bd26.c4797"
+            ]
+        ]
+    },
+    {
+        "id": "c97f5156.201c3",
+        "type": "function",
+        "z": "79cd611b.4e9e",
+        "name": "check response",
+        "func": "if(msg.payload.features === undefined){\n    return [null, msg];\n}\n\nlet payload = msg.payload.features;\n\nmsg.payload = payload;\n\nreturn msg;",
+        "outputs": 2,
+        "noerr": 0,
+        "x": 760,
+        "y": 160,
+        "wires": [
+            [
+                "f36ce574.916f28"
+            ],
+            [
+                "ca38085c.c76348"
+            ]
+        ]
+    },
+    {
+        "id": "e6a7bd26.c4797",
+        "type": "debug",
+        "z": "79cd611b.4e9e",
+        "name": "",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "false",
+        "x": 910,
+        "y": 340,
+        "wires": []
+    },
+    {
+        "id": "5116eabf.d62884",
+        "type": "inject",
+        "z": "79cd611b.4e9e",
+        "name": "インデックス削除",
+        "topic": "",
+        "payload": "",
+        "payloadType": "date",
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "x": 170,
+        "y": 620,
+        "wires": [
+            [
+                "638699ff.08fcb8"
+            ]
+        ]
+    },
+    {
+        "id": "638699ff.08fcb8",
+        "type": "function",
+        "z": "79cd611b.4e9e",
+        "name": "delete index",
+        "func": "msg.eqConfig = global.get('earthquakeConfig');\nconst SERVICE_NAME = env.get(\"SERVICE_NAME\");\nconst API_KEY = msg.eqConfig.qu.apiKey;\nconst INDEX = `${SERVICE_NAME}-${msg.eqConfig.elasticsearch.indexName}`;\nconst TYPE = \"_doc\"\n\nmsg.url = `${msg.eqConfig.elasticsearch.endpoint}/${INDEX}`;\nmsg.headers = {};\nmsg.headers['x-qanatuniverse-apikey'] = API_KEY;\nmsg.headers['Content-Type'] = 'application/json';\nmsg.method = \"DELETE\";\nmsg.payload = {};\n\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "x": 370,
+        "y": 620,
+        "wires": [
+            [
+                "9ceba35d.5aa6f"
+            ]
+        ]
+    },
+    {
+        "id": "9ceba35d.5aa6f",
+        "type": "http request",
+        "z": "79cd611b.4e9e",
+        "name": "",
+        "method": "use",
+        "ret": "obj",
+        "url": "",
+        "tls": "",
+        "x": 570,
+        "y": 620,
+        "wires": [
+            [
+                "40ec757f.c1741c"
+            ]
+        ]
+    },
+    {
+        "id": "40ec757f.c1741c",
+        "type": "debug",
+        "z": "79cd611b.4e9e",
+        "name": "",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "false",
+        "x": 1030,
+        "y": 620,
+        "wires": []
+    },
+    {
+        "id": "971af1b0.b7ed2",
+        "type": "function",
+        "z": "79cd611b.4e9e",
+        "name": "mapping",
+        "func": "const SERVICE_NAME = env.get(\"SERVICE_NAME\");\nconst API_KEY = msg.eqConfig.qu.apiKey;\nconst INDEX = `${SERVICE_NAME}-${msg.eqConfig.elasticsearch.indexName}`;\nconst TYPE = \"_doc\"\n\nmsg.url = `${msg.eqConfig.elasticsearch.endpoint}/${INDEX}/_mapping/${TYPE}`;\nmsg.headers = {};\nmsg.headers['x-qanatuniverse-apikey'] = API_KEY;\nmsg.headers['Content-Type'] = 'application/json';\nmsg.method = \"POST\";\nmsg.payload = {\n    \"properties\": {\n        \"location\": {\n        \"type\": \"geo_point\"\n        }\n    }\n};\n\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "x": 720,
+        "y": 560,
+        "wires": [
+            [
+                "9eba823b.bbff"
+            ]
+        ]
+    },
+    {
+        "id": "9eba823b.bbff",
+        "type": "http request",
+        "z": "79cd611b.4e9e",
+        "name": "",
+        "method": "use",
+        "ret": "obj",
+        "url": "",
+        "tls": "",
+        "x": 890,
+        "y": 560,
+        "wires": [
+            [
+                "66e5042b.45b10c"
+            ]
+        ]
+    },
+    {
+        "id": "ca38085c.c76348",
+        "type": "debug",
+        "z": "79cd611b.4e9e",
+        "name": "取得エラー",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "payload",
+        "targetType": "msg",
+        "x": 950,
+        "y": 200,
+        "wires": []
+    },
+    {
+        "id": "8aabca67.0cd438",
+        "type": "inject",
+        "z": "79cd611b.4e9e",
+        "name": "グローバル変数設定",
+        "topic": "",
+        "payload": "",
+        "payloadType": "date",
+        "repeat": "",
+        "crontab": "",
+        "once": true,
+        "onceDelay": 0.1,
+        "x": 180,
+        "y": 60,
+        "wires": [
+            [
+                "3a17fd61.fb8d32"
+            ]
+        ]
+    },
+    {
+        "id": "3a17fd61.fb8d32",
+        "type": "function",
+        "z": "79cd611b.4e9e",
+        "name": "グローバル変数",
+        "func": "const config = {\n    qu: {\n        apiKey: ''\n    },\n    earthquake: {\n        endpoint: ''\n    },\n    elasticsearch: {\n        endpoint: 'https://portal.qanat-universe.com/common/api/v1/db/es68',\n        indexName: 'earthquake'\n    }\n};\n\nglobal.set('earthquakeConfig', config);\nmsg.payload = config;\n\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "x": 390,
+        "y": 60,
+        "wires": [
+            [
+                "89eadc3d.ba1e9"
+            ]
+        ]
+    },
+    {
+        "id": "89eadc3d.ba1e9",
+        "type": "debug",
+        "z": "79cd611b.4e9e",
+        "name": "",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "payload",
+        "targetType": "msg",
+        "x": 590,
+        "y": 60,
+        "wires": []
+    },
+    {
+        "id": "f36ce574.916f28",
+        "type": "debug",
+        "z": "79cd611b.4e9e",
+        "name": "",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "payload",
+        "targetType": "msg",
+        "x": 950,
+        "y": 160,
+        "wires": []
+    }
+]
